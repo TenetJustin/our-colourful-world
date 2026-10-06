@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useGameStore } from '../state/gameStore'
+import { HOME_DOOR, SMELL_SOURCES } from '../world/worldData'
 import { requestGamePointerLock } from '../game/pointerLock'
 import { playOpeningBus, unlockAudio } from '../audio/audioEngine'
 
@@ -83,6 +84,7 @@ function MemoryPanel() {
   if (!open) return null
   const bakery = discoveries.bakery?.confidence ?? 0
   const crossing = discoveries.crossing?.confidence ?? discoveries['crossing-space']?.confidence ?? 0
+  const residential = discoveries.residential?.confidence ?? 0
   const home = discoveries['home-building']?.confidence ?? 0
   return (
     <section className="memory-panel" aria-label="我知道的信息">
@@ -103,6 +105,8 @@ function MemoryPanel() {
             <div className={`map-node ${bakery >= 1 ? 'confirmed' : bakery > 0 ? 'suspected' : 'unknown'}`}><span>{bakery >= 1 ? '面包店' : '面包店？'}</span><small>烘烤气味</small></div>
             <div className="map-line" />
             <div className={`map-node ${crossing > 0.5 ? 'confirmed' : crossing > 0 ? 'suspected' : 'unknown'}`}><span>十字路口{crossing > 0.5 ? '' : '？'}</span><small>车流与提示音</small></div>
+            <div className="map-line" />
+            <div className={`map-node ${residential > 0.5 ? 'confirmed' : residential > 0 ? 'suspected' : 'unknown'}`}><span>盲道尽头{residential > 0.5 ? '' : '？'}</span><small>树叶 · 潮土 · 旧砖</small></div>
             <div className="map-line" />
             <div className={`map-node ${home > 0.8 ? 'confirmed' : 'unknown'}`}><span>家{home > 0.8 ? '' : '？'}</span><small>树叶 · 砖面 · 电梯</small></div>
           </div>
@@ -193,11 +197,18 @@ function ContinuousSenses() {
   const paused = useGameStore((s) => s.paused)
   const phase = useGameStore((s) => s.phase)
   const [x, , z] = useGameStore((s) => s.playerPosition)
+  const yaw = useGameStore((s) => s.playerYaw)
   if (!started || ending || paused) return null
 
   const bakeryDistance = Math.hypot(x - 22, z - 5)
-  const smellStrength = Math.max(0, Math.min(1, 1 - bakeryDistance / 18))
   const tasteMemory = bakeryDistance < 6.5
+  const activeSmells = SMELL_SOURCES.map((source) => {
+    const distance = Math.hypot(x - source.position[0], z - source.position[1])
+    const strength = Math.max(0, Math.min(1, 1 - distance / source.radius))
+    const angle = Math.atan2(source.position[0] - x, -(source.position[1] - z))
+    const pan = Math.max(-1, Math.min(1, Math.sin(angle - yaw)))
+    return { ...source, distance, strength, pan }
+  }).filter((source) => source.strength > 0.035).sort((a, b) => b.strength - a.strength)
   const nearCrossing = Math.abs(x - 25) < 11 && z < -10 && z > -38
   const nearBusStop = Math.hypot(x + 4.5, z - 18) < 15
   const ambient = nearCrossing
@@ -211,11 +222,36 @@ function ContinuousSenses() {
           : '持续车流 · 楼间风声 · 行人脚步'
 
   return (
-    <div className="continuous-senses" style={{ '--smell-strength': smellStrength } as CSSProperties}>
-      {smellStrength > 0 && <div className="smell-aura" aria-hidden="true" />}
+    <div className="continuous-senses">
+      {activeSmells.slice(0, 3).map((source, sourceIndex) => (
+        <div
+          key={source.id}
+          className={`smell-particle-field smell-${source.id}`}
+          aria-hidden="true"
+          style={{
+            '--source-x': `${50 + source.pan * 34}%`,
+            '--smell-strength': Math.max(0.12, source.strength),
+            '--smell-color': source.color,
+          } as CSSProperties}
+        >
+          {Array.from({ length: 18 }).map((_, index) => (
+            <i
+              key={index}
+              style={{
+                '--particle-x': `${(index * 37 + sourceIndex * 19) % 100}%`,
+                '--particle-y': `${(index * 53 + sourceIndex * 11) % 88}%`,
+                '--particle-size': `${3 + (index % 5) * 1.4}px`,
+                '--particle-delay': `${-(index % 9) * 0.72}s`,
+              } as CSSProperties}
+            />
+          ))}
+        </div>
+      ))}
       <aside className="sense-readout" aria-label="持续感官信息">
         <div><span>环境音</span><b>{ambient}</b></div>
-        {smellStrength > 0 && <div className="is-smell"><span>嗅觉</span><b>{smellStrength > 0.62 ? '温热而清晰的烘烤甜味' : '风里持续有淡淡的烘烤气味'}</b></div>}
+        {activeSmells.slice(0, 2).map((source) => (
+          <div key={source.id} className="is-smell"><span>嗅觉</span><b>{source.strength > 0.58 ? source.strongLabel : source.label}</b></div>
+        ))}
         {tasteMemory && <div className="is-taste"><span>味觉联想</span><b>奶油、焦糖和烤面包边的余味</b></div>}
       </aside>
     </div>
@@ -256,7 +292,7 @@ function DebugPanel() {
     ['BAKERY', [21, 1.65, 4]],
     ['CROSS', [25, 1.65, -17]],
     ['SOUTH', [25, 1.65, -38]],
-    ['HOME', [25, 1.65, -51]],
+    ['HOME', [HOME_DOOR[0], 1.65, -49.5]],
   ]
   return (
     <div className="debug-panel">

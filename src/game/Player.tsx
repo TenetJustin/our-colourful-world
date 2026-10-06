@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useGameStore } from '../state/gameStore'
-import { BLOCKERS, NPCS, PALETTE, STREET_OBSTACLES } from '../world/worldData'
+import { BLOCKERS, HOME_DOOR, NPCS, PALETTE, PLAYER_START, STREET_OBSTACLES } from '../world/worldData'
 import { requestGamePointerLock } from './pointerLock'
 import { playCaneTap, playImpact } from '../audio/audioEngine'
 
@@ -29,7 +29,7 @@ function streetObstacleAt(x: number, z: number) {
 
 export function Player() {
   const { camera, gl, scene } = useThree()
-  const position = useRef(new THREE.Vector3(0, 1.65, 51))
+  const position = useRef(new THREE.Vector3(...PLAYER_START))
   const velocity = useRef(new THREE.Vector3())
   const yaw = useRef(0)
   const pitch = useRef(-0.04)
@@ -212,7 +212,8 @@ export function Player() {
       discover('blocked-path', 1, 'touch')
       return
     }
-    const atHome = Math.abs(p.x - 25) < 3.4 && p.z < -50.5
+    const atHome = Math.hypot(p.x - HOME_DOOR[0], p.z - HOME_DOOR[2]) < 3.4
+      && Boolean(useGameStore.getState().discoveries['home-building'])
     if (atHome) {
       playCaneTap('door')
       showSubtitle('杖尖碰到一扇很熟悉的门。')
@@ -253,7 +254,7 @@ export function Player() {
     }
     const onTactile = (Math.abs(p.x) < 1.05 && p.z > 6 && p.z < 53)
       || (Math.abs(p.z - 7) < 1.05 && p.x > -1 && p.x < 27)
-      || (Math.abs(p.x - 25) < 1.05 && ((p.z < 8 && p.z > -19) || (p.z < -31 && p.z > -54)))
+      || (Math.abs(p.x - 25) < 1.05 && ((p.z < 8 && p.z > -19) || (p.z < -31 && p.z > -39)))
     if (onTactile) {
       playCaneTap('tactile')
       showSubtitle('嗒—嗒—嗒。杖尖顺着条形凸起移动，方向稳定。')

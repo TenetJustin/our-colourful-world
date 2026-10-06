@@ -37,6 +37,69 @@ export const NPCS = [
   { id: 'busy', position: [12, 0, -3] as const, label: '询问' },
 ]
 
+export const PLAYER_START = [-3.8, 1.65, 49.5] as const
+export const HOME_DOOR = [18, 1.4, -52.9] as const
+
+export type SmellSource = {
+  id: string
+  position: readonly [number, number]
+  radius: number
+  label: string
+  strongLabel: string
+  color: string
+}
+
+export const SMELL_SOURCES: SmellSource[] = [
+  {
+    id: 'city-air',
+    position: [0, 10],
+    radius: 95,
+    label: '风里有尘土、湿石面和人群衣物混合的城市气味',
+    strongLabel: '尘土、湿石面和人群衣物的气味持续停留在街道里',
+    color: '#6F6B65',
+  },
+  {
+    id: 'traffic',
+    position: [25, -25],
+    radius: 32,
+    label: '风里混着车辆尾气和热沥青的气味',
+    strongLabel: '尾气、轮胎与被晒热的路面气味很明显',
+    color: '#8B8378',
+  },
+  {
+    id: 'street-food',
+    position: [-12, 4],
+    radius: 17,
+    label: '远处飘来油烟、葱和胡椒的味道',
+    strongLabel: '街边餐食的热油、葱和胡椒味聚在一起',
+    color: '#A78662',
+  },
+  {
+    id: 'bakery',
+    position: [22, 5],
+    radius: 21,
+    label: '空气里持续有淡淡的烘烤甜味',
+    strongLabel: '温热的黄油、焦糖和烤面包边气味很清晰',
+    color: '#C8AD7F',
+  },
+  {
+    id: 'trees',
+    position: [17, -43],
+    radius: 21,
+    label: '潮湿树皮、泥土和落叶的气味渐渐靠近',
+    strongLabel: '树下潮土、旧砖和叶片的气味很熟悉',
+    color: '#737866',
+  },
+  {
+    id: 'laundry',
+    position: [36, -45],
+    radius: 16,
+    label: '住宅窗边有洗衣液和晚饭蒸汽的味道',
+    strongLabel: '皂香、米饭蒸汽和楼道气味交叠在一起',
+    color: '#9A958D',
+  },
+]
+
 export const PALETTE = {
   black: '#12110F',
   charcoal: '#25221E',

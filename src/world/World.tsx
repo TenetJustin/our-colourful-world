@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useGameStore } from '../state/gameStore'
-import { BLOCKERS, NPCS, PALETTE, STREET_OBSTACLES } from './worldData'
+import { BLOCKERS, NPCS, PALETTE, SMELL_SOURCES, STREET_OBSTACLES } from './worldData'
 
 type BoxProps = {
   position: [number, number, number]
@@ -59,7 +59,9 @@ function TactilePath() {
     for (let z = 51; z >= 7; z -= 0.62) result.push({ x: 0, z, axis: 'z' })
     for (let x = 0.62; x <= 25; x += 0.62) result.push({ x, z: 7, axis: 'x' })
     for (let z = 6.38; z >= -18; z -= 0.62) result.push({ x: 25, z, axis: 'z' })
-    for (let z = -32; z >= -53; z -= 0.62) result.push({ x: 25, z, axis: 'z' })
+    // The public tactile route ends inside the residential block. It is a
+    // navigation aid, not a private line leading to the player's front door.
+    for (let z = -32; z >= -38.3; z -= 0.62) result.push({ x: 25, z, axis: 'z' })
     return result
   }, [])
   const base = useRef<THREE.InstancedMesh>(null)
@@ -67,7 +69,7 @@ function TactilePath() {
   const warningBase = useRef<THREE.InstancedMesh>(null)
   const domes = useRef<THREE.InstancedMesh>(null)
   const warningPads = useMemo(() => [
-    [0, 51], [0, 7], [25, 7], [25, -18.45], [25, -31.55], [25, -53],
+    [0, 51], [0, 7], [25, 7], [25, -18.45], [25, -31.55], [25, -38.5],
   ] as Array<[number, number]>, [])
 
   useLayoutEffect(() => {
@@ -259,6 +261,48 @@ function NPC({ id, position }: { id: string; position: readonly [number, number,
   )
 }
 
+const pedestrianRoutes = [
+  { from: [-18, 17], to: [17, 17], speed: 0.75, phase: 0.08, color: PALETTE.cream },
+  { from: [18, 14], to: [-16, 14], speed: 0.62, phase: 0.55, color: PALETTE.stone },
+  { from: [-8, 2], to: [20, 2], speed: 0.58, phase: 0.32, color: PALETTE.camel },
+  { from: [21, 10], to: [2, 10], speed: 0.72, phase: 0.82, color: '#6f6a62' },
+  { from: [-17, -13], to: [19, -13], speed: 0.86, phase: 0.18, color: '#aaa196' },
+  { from: [44, -14], to: [28, -14], speed: 0.54, phase: 0.68, color: PALETTE.wheat },
+  { from: [10, -36], to: [42, -36], speed: 0.64, phase: 0.42, color: '#7d786f' },
+  { from: [41, -40], to: [12, -40], speed: 0.48, phase: 0.9, color: '#b3a892' },
+  { from: [13, -48], to: [34, -48], speed: 0.44, phase: 0.25, color: PALETTE.cream },
+  { from: [34, -51], to: [16, -51], speed: 0.52, phase: 0.73, color: PALETTE.stone },
+  { from: [-18, 23], to: [18, 23], speed: 0.8, phase: 0.47, color: '#91877b' },
+  { from: [20, 29], to: [-12, 29], speed: 0.67, phase: 0.15, color: '#c1b7a5' },
+  { from: [-14, 43], to: [10, 43], speed: 0.46, phase: 0.6, color: PALETTE.camel },
+  { from: [9, 39], to: [-15, 39], speed: 0.56, phase: 0.36, color: '#878077' },
+] as const
+
+function AmbientPedestrian({ route, index }: { route: (typeof pedestrianRoutes)[number]; index: number }) {
+  const ref = useRef<THREE.Group>(null)
+  const clock = useRef<number>(route.phase)
+  useFrame((_, delta) => {
+    clock.current = (clock.current + delta * route.speed * 0.035) % 1
+    const progress = clock.current < 0.5 ? clock.current * 2 : 2 - clock.current * 2
+    const x = THREE.MathUtils.lerp(route.from[0], route.to[0], progress)
+    const z = THREE.MathUtils.lerp(route.from[1], route.to[1], progress)
+    if (!ref.current) return
+    ref.current.position.set(x, Math.abs(Math.sin(clock.current * Math.PI * 18)) * 0.025, z)
+    ref.current.rotation.y = clock.current < 0.5
+      ? Math.atan2(route.to[0] - route.from[0], route.to[1] - route.from[1])
+      : Math.atan2(route.from[0] - route.to[0], route.from[1] - route.to[1])
+  })
+  const scale = 0.88 + (index % 4) * 0.045
+  return (
+    <group ref={ref} scale={scale} userData={{ material: 'person' }}>
+      <mesh position={[0, 1.77, 0]} castShadow><sphereGeometry args={[0.23, 12, 9]} /><meshStandardMaterial color={route.color} roughness={0.92} /></mesh>
+      <mesh position={[0, 1.16, 0]} castShadow><capsuleGeometry args={[0.27, 0.7, 6, 10]} /><meshStandardMaterial color={route.color} roughness={0.96} /></mesh>
+      <mesh position={[-0.15, 0.4, 0]} castShadow><capsuleGeometry args={[0.09, 0.58, 5, 8]} /><meshStandardMaterial color={PALETTE.charcoal} /></mesh>
+      <mesh position={[0.15, 0.4, 0]} castShadow><capsuleGeometry args={[0.09, 0.58, 5, 8]} /><meshStandardMaterial color={PALETTE.charcoal} /></mesh>
+    </group>
+  )
+}
+
 function Bakery() {
   return (
     <group position={[27.2, 0, 7]}>
@@ -277,73 +321,91 @@ function Bakery() {
   )
 }
 
-function SmellParticles() {
+function SmellParticles({ center, color, radius }: { center: readonly [number, number]; color: string; radius: number }) {
   const ref = useRef<THREE.Points>(null)
   const geometry = useMemo(() => {
-    const points = new Float32Array(75 * 3)
-    for (let i = 0; i < 75; i++) {
-      points[i * 3] = 17 + Math.random() * 14
-      points[i * 3 + 1] = 0.4 + Math.random() * 4
-      points[i * 3 + 2] = -1 + Math.random() * 15
+    const count = 52
+    const points = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      const angle = i * 2.39996
+      const distance = radius * Math.sqrt((i + 1) / count) * 0.72
+      points[i * 3] = center[0] + Math.cos(angle) * distance
+      points[i * 3 + 1] = 0.35 + ((i * 17) % 31) / 31 * 3.8
+      points[i * 3 + 2] = center[1] + Math.sin(angle) * distance
     }
     const geo = new THREE.BufferGeometry()
     geo.setAttribute('position', new THREE.BufferAttribute(points, 3))
     return geo
-  }, [])
+  }, [center, radius])
   useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * 0.025
+    if (ref.current) ref.current.rotation.y += delta * 0.008
   })
   return (
     <points ref={ref} geometry={geometry}>
-      <pointsMaterial color={PALETTE.wheat} size={0.12} opacity={0.17} transparent depthWrite={false} />
+      <pointsMaterial color={color} size={0.105} opacity={0.25} transparent depthWrite={false} />
     </points>
   )
 }
 
-function MovingCars() {
-  const group = useRef<THREE.Group>(null)
+const trafficVehicles = [
+  { offset: -54, lane: -2.8, direction: 1, speed: 7.4, color: PALETTE.camel, scale: 1 },
+  { offset: -32, lane: -2.8, direction: 1, speed: 7.4, color: '#67635d', scale: 0.92 },
+  { offset: -10, lane: -2.8, direction: 1, speed: 7.4, color: '#8c7962', scale: 1.08 },
+  { offset: 14, lane: -2.8, direction: 1, speed: 7.4, color: PALETTE.stone, scale: 0.96 },
+  { offset: 39, lane: -2.8, direction: 1, speed: 7.4, color: '#514c45', scale: 1.14 },
+  { offset: -43, lane: 2.8, direction: -1, speed: 6.8, color: PALETTE.cream, scale: 0.94 },
+  { offset: -18, lane: 2.8, direction: -1, speed: 6.8, color: '#756f67', scale: 1.04 },
+  { offset: 6, lane: 2.8, direction: -1, speed: 6.8, color: PALETTE.wheat, scale: 0.9 },
+  { offset: 30, lane: 2.8, direction: -1, speed: 6.8, color: '#5d5953', scale: 1.12 },
+  { offset: 53, lane: 2.8, direction: -1, speed: 6.8, color: PALETTE.camel, scale: 0.98 },
+] as const
+
+function TrafficVehicle({ vehicle }: { vehicle: (typeof trafficVehicles)[number] }) {
+  const ref = useRef<THREE.Group>(null)
   const crossing = useGameStore((s) => s.crossingState)
-  const t = useRef(0)
+  const travel = useRef<number>(vehicle.offset)
   useFrame((_, delta) => {
     const speed = crossing === 'CROSS_TRAFFIC'
-      ? 4.7
+      ? vehicle.speed
       : crossing === 'TURNING_VEHICLE'
-        ? 1.15
+        ? 1.25
         : crossing === 'CLEARANCE'
-          ? 0.18
-          : 0.05
-    t.current += delta * speed
-    if (group.current) group.current.position.x = ((t.current + 60) % 120) - 60
+          ? 2.4
+          : 0.08
+    travel.current += delta * speed * vehicle.direction
+    if (travel.current > 60) travel.current = -60
+    if (travel.current < -60) travel.current = 60
+    if (ref.current) ref.current.position.x = travel.current
   })
   return (
-    <group ref={group} position={[-45, 0, -25]}>
-      {[-18, 18].map((x, i) => (
-        <group key={x} position={[x, 0, i === 0 ? -2.7 : 2.7]}>
-          <Box position={[0, 0.66, 0]} size={[4.4, 0.9, 1.82]} color={i ? PALETTE.stone : PALETTE.camel} />
-          <Box position={[0.2, 1.25, 0]} size={[2.25, 0.7, 1.58]} color={PALETTE.charcoal} />
-          <Box position={[0.15, 1.3, 0.81]} size={[1.75, 0.48, 0.05]} color="#78766f" edge={false} />
-          {[-1.35, 1.35].flatMap((wx) => [-0.86, 0.86].map((wz) => (
-            <mesh key={`${wx}-${wz}`} position={[wx, 0.42, wz]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-              <cylinderGeometry args={[0.35, 0.35, 0.2, 16]} />
-              <meshStandardMaterial color="#11100f" roughness={0.8} />
-            </mesh>
-          )))}
-          <mesh position={[2.23, 0.72, -0.52]}><circleGeometry args={[0.13, 12]} /><meshBasicMaterial color={PALETTE.cream} /></mesh>
-          <mesh position={[2.23, 0.72, 0.52]}><circleGeometry args={[0.13, 12]} /><meshBasicMaterial color={PALETTE.cream} /></mesh>
-        </group>
-      ))}
+    <group ref={ref} position={[vehicle.offset, 0, -25 + vehicle.lane]} rotation={[0, vehicle.direction < 0 ? Math.PI : 0, 0]} scale={vehicle.scale}>
+      <Box position={[0, 0.66, 0]} size={[4.4, 0.9, 1.82]} color={vehicle.color} />
+      <Box position={[0.2, 1.25, 0]} size={[2.25, 0.7, 1.58]} color={PALETTE.charcoal} />
+      <Box position={[0.15, 1.3, 0.81]} size={[1.75, 0.48, 0.05]} color="#78766f" edge={false} />
+      {[-1.35, 1.35].flatMap((wx) => [-0.86, 0.86].map((wz) => (
+        <mesh key={`${wx}-${wz}`} position={[wx, 0.42, wz]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.35, 0.35, 0.2, 16]} />
+          <meshStandardMaterial color="#11100f" roughness={0.8} />
+        </mesh>
+      )))}
+      <mesh position={[2.23, 0.72, -0.52]} rotation={[0, Math.PI / 2, 0]}><circleGeometry args={[0.13, 12]} /><meshBasicMaterial color={PALETTE.cream} /></mesh>
+      <mesh position={[2.23, 0.72, 0.52]} rotation={[0, Math.PI / 2, 0]}><circleGeometry args={[0.13, 12]} /><meshBasicMaterial color={PALETTE.cream} /></mesh>
     </group>
   )
+}
+
+function MovingCars() {
+  return <>{trafficVehicles.map((vehicle, index) => <TrafficVehicle key={index} vehicle={vehicle} />)}</>
 }
 
 function Home() {
   return (
     <group position={[25, 0, -56]} userData={{ material: 'wall' }}>
       <Box position={[0, 5, 0]} size={[21, 10, 6]} color="#2e2a24" userData={{ material: 'wall' }} />
-      <Box position={[0, 2, 3.06]} size={[3.2, 4, 0.2]} color={PALETTE.camel} userData={{ material: 'home door' }} />
-      <Box position={[-5.5, 4.8, 3.07]} size={[2.5, 2.4, 0.18]} color={PALETTE.stone} />
+      <Box position={[-7, 2, 3.06]} size={[3.2, 4, 0.2]} color={PALETTE.camel} userData={{ material: 'home door' }} />
+      <Box position={[-2.2, 4.8, 3.07]} size={[2.5, 2.4, 0.18]} color={PALETTE.stone} />
       <Box position={[5.5, 4.8, 3.07]} size={[2.5, 2.4, 0.18]} color={PALETTE.stone} />
-      <mesh position={[0, 4.35, 3.22]}>
+      <mesh position={[-7, 4.35, 3.22]}>
         <circleGeometry args={[0.25, 20]} />
         <meshBasicMaterial color={PALETTE.cream} />
       </mesh>
@@ -381,7 +443,9 @@ export function GameWorld() {
       ))}
       <BusStop />
       <Bakery />
-      <SmellParticles />
+      {SMELL_SOURCES.map((source) => (
+        <SmellParticles key={source.id} center={source.position} color={source.color} radius={source.radius} />
+      ))}
       <MovingCars />
       <Home />
       <Building x={-28} z={34} w={30} d={18} h={12} />
@@ -390,6 +454,7 @@ export function GameWorld() {
       <Building x={-30} z={-45} w={28} d={18} h={14} />
       <Building x={39} z={-46} w={16} d={19} h={11} />
       {NPCS.map((npc) => <NPC key={npc.id} id={npc.id} position={npc.position} />)}
+      {pedestrianRoutes.map((route, index) => <AmbientPedestrian key={index} route={route} index={index} />)}
       {([[-13, 0, -10], [-5, 0, -10], [4, 0, -12], [38, 0, -12], [35, 0, -38], [14, 0, -43]] as Array<[number, number, number]>).map((p, i) => (
         <Tree key={i} position={p} scale={0.75 + (i % 3) * 0.12} />
       ))}

@@ -285,29 +285,51 @@ kbd { font: inherit; color: #e6dccb; border: 1px solid rgba(230, 220, 203, .28);
 .sound-status.is-ready { color: rgba(242, 238, 229, .42); }
 
 .continuous-senses {
-  --smell-strength: 0;
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
   overflow: hidden;
 }
-.smell-aura {
+.smell-particle-field {
   position: absolute;
-  width: 62vw;
-  height: 84vh;
-  right: -18vw;
-  top: 7vh;
-  opacity: calc(var(--smell-strength) * .72);
-  background:
-    radial-gradient(ellipse at 55% 50%, rgba(200, 173, 127, .2), transparent 42%),
-    radial-gradient(ellipse at 35% 65%, rgba(167, 134, 98, .12), transparent 48%);
-  filter: blur(22px);
-  animation: smellDrift 7s ease-in-out infinite alternate;
+  left: calc(var(--source-x) - 22vw);
+  top: 8vh;
+  width: 44vw;
+  height: 78vh;
+  opacity: calc(.18 + var(--smell-strength) * .72);
+  color: var(--smell-color);
+  filter: drop-shadow(0 0 8px currentColor);
+  animation: smellFieldDrift 8s ease-in-out infinite alternate;
 }
-@keyframes smellDrift {
+.smell-particle-field::before {
+  content: '';
+  position: absolute;
+  inset: 8% 5%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, currentColor 12%, transparent), transparent 66%);
+  filter: blur(18px);
+}
+.smell-particle-field i {
+  position: absolute;
+  left: var(--particle-x);
+  top: var(--particle-y);
+  width: var(--particle-size);
+  height: var(--particle-size);
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .7;
+  animation: smellParticle 6.5s ease-in-out infinite;
+  animation-delay: var(--particle-delay);
+}
+@keyframes smellFieldDrift {
   from { transform: translate3d(-2vw, 1vh, 0) scale(.94); }
   to { transform: translate3d(4vw, -2vh, 0) scale(1.08); }
+}
+@keyframes smellParticle {
+  0%, 100% { transform: translate3d(-7px, 14px, 0) scale(.7); opacity: .18; }
+  38% { transform: translate3d(8px, -9px, 0) scale(1.1); opacity: .82; }
+  68% { transform: translate3d(-2px, -22px, 0) scale(.88); opacity: .44; }
 }
 .sense-readout {
   position: absolute;

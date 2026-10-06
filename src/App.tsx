@@ -9,6 +9,7 @@ import { AudioManager } from './audio/AudioManager'
 import { Interface } from './ui/Interface'
 import { useGameStore } from './state/gameStore'
 import { WebMCPBridge } from './game/WebMCPBridge'
+import { PLAYER_START } from './world/worldData'
 
 function Scene() {
   return (
@@ -47,7 +48,7 @@ export default function App() {
       <Canvas
         shadows
         dpr={[1, 1.6]}
-        camera={{ fov: 68, near: 0.08, far: 130, position: [0, 1.65, 51] }}
+        camera={{ fov: 68, near: 0.08, far: 130, position: [...PLAYER_START] }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
         onCreated={({ gl }) => {
           gl.domElement.setAttribute('aria-label', 'Our Colourful World 三维游戏场景')

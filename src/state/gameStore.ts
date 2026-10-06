@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { CrossingState, DialogueState, DiscoveryState, GamePhase, MemoryEntry, Pulse, SenseType, SystemHint } from '../game/types'
+import { PLAYER_START } from '../world/worldData'
 
 type GameStore = {
   started: boolean
@@ -73,7 +74,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pulses: [],
   crossingState: 'CROSS_TRAFFIC',
   endingTriggered: false,
-  playerPosition: [0, 1.05, 51],
+  playerPosition: [...PLAYER_START],
   playerYaw: 0,
   pointerLocked: false,
   audioReady: false,
