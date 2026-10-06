@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useGameStore } from '../state/gameStore'
 import { HOME_DOOR, SMELL_SOURCES } from '../world/worldData'
@@ -10,15 +10,17 @@ function StartSequence() {
   const start = useGameStore((s) => s.start)
   const [sequence, setSequence] = useState(false)
   const [step, setStep] = useState(0)
+  const hasBegun = useRef(false)
 
   const begin = useCallback(() => {
-    // Enter the game before trying optional browser capabilities. GPT's embedded
-    // browser may reject audio or pointer-lock requests, but that must never
-    // prevent the opening screen from closing.
+    if (hasBegun.current) return
+    hasBegun.current = true
+    // The state transition happens first and cannot be cancelled by browser
+    // audio policy. Both the button and the full opening surface call this.
     start()
     setSequence(true)
-    try { unlockAudio() } catch { /* Audio can be enabled again in-game. */ }
-    try { playOpeningBus() } catch { /* Keep the visual flow playable. */ }
+    try { unlockAudio() } catch { /* Sound can be enabled again in-game. */ }
+    try { playOpeningBus() } catch { /* Enter the game even without audio. */ }
   }, [start])
 
   useEffect(() => {
@@ -52,18 +54,13 @@ function StartSequence() {
     )
   }
   return (
-    <div className="opening">
+    <div className="opening" onPointerDown={begin} role="button" tabIndex={0} aria-label="点击任意位置开始游戏">
       <div className="opening-mark" aria-hidden="true"><span /><span /><span /></div>
       <p className="eyebrow">A SENSORY JOURNEY</p>
       <h1>OUR COLOURFUL WORLD</h1>
       <p className="opening-copy">一段关于感知、判断与归途的第一人称体验</p>
-      <button
-        type="button"
-        className="primary-action"
-        data-testid="start-game"
-        onClick={begin}
-      >开始</button>
-      <p className="start-alternative">也可按 Enter / Space 开始</p>
+      <p className="enter-prompt"><span aria-hidden="true" />点击任意位置进入</p>
+      <p className="start-alternative">也可按 Enter / Space</p>
       <p className="headphone-note">建议佩戴耳机 · 空间声音是导航的一部分</p>
       <div className="controls-preview">
         <span><b>WASD</b> 移动</span>

@@ -64,13 +64,16 @@ button { font: inherit; }
   flex-direction: column;
   text-align: center;
   padding: 2rem;
+  cursor: pointer;
 }
+.opening > * { position: relative; z-index: 1; }
 
 .opening::before {
   content: '';
   position: absolute;
   inset: 2.5rem;
   border: 1px solid rgba(230, 220, 203, .12);
+  pointer-events: none;
 }
 
 .opening-mark { display: flex; gap: .7rem; height: 3.7rem; align-items: center; margin-bottom: 1.8rem; }
@@ -94,7 +97,10 @@ button { font: inherit; }
   transition: background .25s ease, color .25s ease, border-color .25s ease;
 }
 .primary-action:hover, .primary-action:focus-visible { background: #e6dccb; color: #12110f; border-color: #e6dccb; outline: none; }
-.start-alternative { margin: .75rem 0 0; color: rgba(242, 238, 229, .38); font-size: .7rem; letter-spacing: .08em; }
+.enter-prompt { display: flex; align-items: center; gap: .75rem; margin: 0; color: #e6dccb; font-size: .88rem; letter-spacing: .16em; }
+.enter-prompt span { width: 1.9rem; height: 1px; background: #c8ad7f; animation: enterPulse 1.8s ease-in-out infinite; }
+.start-alternative { margin: .65rem 0 0; color: rgba(242, 238, 229, .38); font-size: .7rem; letter-spacing: .08em; }
+@keyframes enterPulse { 0%, 100% { transform: scaleX(.45); opacity: .35; } 50% { transform: scaleX(1); opacity: 1; } }
 
 .headphone-note { margin: 1.4rem 0 0; font-size: .82rem; color: #8b8378; }
 .controls-preview { position: absolute; bottom: 4.4rem; display: flex; gap: 1.7rem; font-size: .75rem; color: rgba(242, 238, 229, .45); }
