@@ -2,7 +2,7 @@
 
 **Find your way through sound, touch and memory. 用声音、触觉与记忆找到回家的路。**
 
-[Play the live demo](https://way-home-sensory-journey.muncyinshou2025.chatgpt.site/?version=5)
+[Play the live demo](https://tenetjustin.github.io/our-colourful-world/)
 
 Our Colourful World is a first-person sensory journey about finding your way home when sight is not the main source of information. After an unexpected bus diversion, the player must reconstruct an unfamiliar neighbourhood through spatial sound, a white cane, tactile paving, conversations, smell and memory.
 
@@ -55,4 +55,3 @@ Headphones are recommended because spatial sound is part of the navigation syste
 - React Three Rapier
 - Zustand
 - Web Audio API
-
